@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gestao</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --primary: #6366f1; --primary-dark: #4f46e5; --secondary: #8b5cf6; --success: #10b981; --danger: #ef4444; --warning: #f59e0b; --gray-100: #f3f4f6; --gray-200: #e5e7eb; --gray-300: #d1d5db; --gray-500: #6b7280; --gray-700: #374151; --gray-900: #111827; --sidebar-bg: #1e293b; --sidebar-dark: #0f172a; }
+        body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); color: var(--gray-700); min-height: 100vh; }
+        
+        .sidebar { position: fixed; top: 0; left: 0; width: 260px; height: 100vh; background: linear-gradient(180deg, var(--sidebar-bg) 0%, var(--sidebar-dark) 100%); color: #fff; z-index: 100; box-shadow: 4px 0 20px rgba(0,0,0,0.3); overflow-y: auto; }
+        .sidebar::-webkit-scrollbar { width: 6px; }
+        .sidebar::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+        .sidebar-header { padding: 1.25rem 1.5rem; background: rgba(255,255,255,0.05); border-bottom: 1px solid rgba(255,255,255,0.1); font-size: 1.1rem; font-weight: 700; letter-spacing: 0.05em; text-align: center; }
+        
+        .menu-group { border-bottom: 1px solid rgba(255,255,255,0.08); }
+        .menu-title { display: flex; align-items: center; gap: 0.75rem; padding: 0.9rem 1.25rem; cursor: pointer; transition: all 0.2s; font-weight: 500; font-size: 0.9rem; color: #cbd5e1; }
+        .menu-title:hover { background: rgba(255,255,255,0.08); }
+        .menu-title .icon { font-size: 1.1rem; width: 24px; text-align: center; }
+        .menu-title .arrow { margin-left: auto; font-size: 0.7rem; transition: transform 0.3s; }
+        .menu-group.open > .menu-title .arrow { transform: rotate(180deg); }
+        
+        .submenu { max-height: 0; overflow: hidden; background: rgba(0,0,0,0.25); transition: max-height 0.3s ease-out; }
+        .menu-group.open > .submenu { max-height: 400px; }
+        .submenu-item { padding: 0.7rem 1rem 0.7rem 3.25rem; color: #94a3b8; font-size: 0.85rem; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 0.5rem; border-left: 3px solid transparent; }
+        .submenu-item:hover { background: rgba(255,255,255,0.05); color: #fff; border-left-color: var(--primary); }
+        .submenu-item.active { background: rgba(99,102,241,0.15); color: #fff; border-left-color: var(--primary); }
+        
+        .main { margin-left: 260px; min-height: 100vh; }
+        .header { background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%); color: #fff; padding: 1.5rem 2rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); position: relative; overflow: hidden; }
+        .header::after { content: ''; position: absolute; top: -50%; right: -10%; width: 300px; height: 300px; background: rgba(255,255,255,0.1); border-radius: 50%; }
+        .header h1 { font-size: 1.5rem; font-weight: 600; position: relative; z-index: 1; }
+        
+        .container { max-width: 1100px; margin: 2rem auto; padding: 0 1.5rem; }
+        .page-section { display: none; }
+        .page-section.active { display: block; }
+        
+        .card { background: #fff; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); padding: 2rem; margin-bottom: 2rem; border: 1px solid var(--gray-200); transition: box-shadow 0.3s; }
+        .card:hover { box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
+        .card h2 { font-size: 1.25rem; color: var(--gray-900); margin-bottom: 1.5rem; padding-bottom: 0.75rem; border-bottom: 2px solid var(--gray-100); font-weight: 600; }
+        
+        .form-group { margin-bottom: 1.25rem; display: flex; flex-direction: column; }
+        .form-group label { font-weight: 500; margin-bottom: 0.5rem; font-size: 0.875rem; color: var(--gray-700); }
+        .form-group input, .form-group textarea, .form-group select { padding: 0.75rem 1rem; border: 2px solid var(--gray-200); border-radius: 10px; font-size: 1rem; transition: all 0.2s; background: var(--gray-100); }
+        .form-group input:focus, .form-group textarea:focus, .form-group select:focus { outline: none; border-color: var(--primary); background: #fff; box-shadow: 0 0 0 3px rgba(99,102,241,0.15); }
+        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
+        
+        .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.75rem 1.5rem; border: none; border-radius: 10px; cursor: pointer; font-size: 0.95rem; font-weight: 500; transition: all 0.2s; }
+        .btn-primary { background: linear-gradient(135deg, var(--primary), var(--secondary)); color: #fff; box-shadow: 0 4px 14px rgba(99,102,241,0.4); }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(99,102,241,0.5); }
+        .btn-warning { background: var(--warning); color: #fff; }
+        .btn-warning:hover { background: #d97706; transform: translateY(-1px); }
+        .btn-danger { background: var(--danger); color: #fff; }
+        .btn-danger:hover { background: #dc2626; transform: translateY(-1px); }
+        .btn-secondary { background: var(--gray-500); color: #fff; }
+        .btn-sm { padding: 0.4rem 0.75rem; font-size: 0.8rem; }
+        .actions { display: flex; gap: 1rem; margin-top: 1.5rem; }
+        
+        table { width: 100%; border-collapse: collapse; }
+        table th, table td { padding: 1rem; text-align: left; border-bottom: 1px solid var(--gray-200); }
+        table th { background: linear-gradient(180deg, #f9fafb, #f3f4f6); font-size: 0.75rem; text-transform: uppercase; color: var(--gray-500); font-weight: 600; letter-spacing: 0.05em; }
+        table th { cursor: pointer; transition: background 0.2s; }
+        table th:hover { background: var(--gray-200); }
+        table tbody tr { transition: background 0.2s; }
+        table tbody tr:hover { background: #f8fafc; }
+        .table-actions { display: flex; gap: 0.5rem; }
+        
+        .msg-ok { background: linear-gradient(135deg, #d1fae5, #a7f3d0); color: #065f46; padding: 1rem; border-radius: 10px; margin-bottom: 1rem; font-weight: 500; border-left: 4px solid var(--success); }
+        .msg-err { background: linear-gradient(135deg, #fee2e2, #fecaca); color: #991b1b; padding: 1rem; border-radius: 10px; margin-bottom: 1rem; font-weight: 500; border-left: 4px solid var(--danger); }
+        .hidden { display: none; }
+        
+        .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+        .stat-card { background: linear-gradient(135deg, var(--primary), var(--secondary)); color: #fff; padding: 1.75rem; border-radius: 16px; text-align: center; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); transition: transform 0.3s; position: relative; overflow: hidden; }
+        .stat-card::before { content: ''; position: absolute; top: -20px; right: -20px; width: 100px; height: 100px; background: rgba(255,255,255,0.1); border-radius: 50%; }
+        .stat-card:hover { transform: translateY(-4px); }
+        .stat-card h3 { font-size: 2.5rem; margin-bottom: 0.5rem; font-weight: 700; }
+        .stat-card p { font-size: 0.9rem; opacity: 0.9; font-weight: 500; }
+        .stat-card.green { background: linear-gradient(135deg, var(--success), #059669); }
+        .stat-card.orange { background: linear-gradient(135deg, var(--warning), #d97706); }
+        .stat-card.red { background: linear-gradient(135deg, var(--danger), #dc2626); }
+        
+        .search-row { display: flex; gap: 0.75rem; margin-bottom: 1rem; }
+        .search-row input { flex: 1; padding: 0.75rem 1rem; border: 2px solid var(--gray-200); border-radius: 10px; font-size: 0.95rem; transition: all 0.2s; }
+        .search-row input:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 3px rgba(99,102,241,0.15); }
+        
+        .total-reg { font-size: 0.875rem; color: var(--gray-500); margin-bottom: 1rem; font-weight: 500; }
+        .empty-state { text-align: center; padding: 3rem; color: var(--gray-500); }
+        .quick-links { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem; }
+        .quick-link { display: flex; align-items: center; gap: 1rem; padding: 1.25rem; background: var(--gray-100); border-radius: 12px; cursor: pointer; transition: all 0.2s; }
+        .quick-link:hover { background: var(--primary); color: #fff; transform: translateY(-2px); }
+        .quick-link .icon { font-size: 1.5rem; }
+    </style>
+</head>
+<body>
+    <!-- SIDEBAR -->
+    <nav class="sidebar">
+        <div class="sidebar-header">&#9881; SISTEMA</div>
+        
+        <!-- DASHBOARD -->
+        <div class="menu-group open">
+            <div class="menu-title" onclick="toggleMenu(this.parentElement)">
+                <span class="icon">&#127968;</span> DASHBOARD <span class="arrow">&#9660;</span>
+            </div>
+            <div class="submenu">
+                <div class="submenu-item active" onclick="showPage('dashboard')">&#127968; Visao Geral</div>
+            </div>
+        </div>
+        
+        <!-- CADASTROS -->
+        <div class="menu-group">
+            <div class="menu-title" onclick="toggleMenu(this.parentElement)">
+                <span class="icon">&#128221;</span> CADASTROS <span class="arrow">&#9660;</span>
+            </div>
+            <div class="submenu">
+                <div class="submenu-item" onclick="showPage('clientes')">&#128100; Clientes</div>
+                <div class="submenu-item" onclick="showPage('fornecedores')">&#128230; Fornecedores</div>
+            </div>
+        </div>
+        
+        <!-- FINANCEIRO -->
+        <div class="menu-group">
+            <div class="menu-title" onclick="toggleMenu(this.parentElement)">
+                <span class="icon">&#128176;</span> FINANCEIRO <span class="arrow">&#9660;</span>
+            </div>
+            <div class="submenu">
+                <div class="submenu-item" onclick="showPage('contas-pagar')">&#128179; Contas a Pagar</div>
+                <div class="submenu-item" onclick="showPage('contas-receber')">&#128178; Contas a Receber</div>
+                <div class="submenu-item" onclick="showPage('boletos')">&#128196; Boletos</div>
+            </div>
+        </div>
+        
+        <!-- ESTOQUE -->
+        <div class="menu-group">
+            <div class="menu-title" onclick="toggleMenu(this.parentElement)">
+                <span class="icon">&#128230;</span> ESTOQUE <span class="arrow">&#9660;</span>
+            </div>
+            <div class="submenu">
+                <div class="submenu-item" onclick="showPage('novo-produto')">&#10010; Novo Produto</div>
+                <div class="submenu-item" onclick="showPage('movimentacao')">&#128260; Movimentacao</div>
+                <div class="submenu-item" onclick="showPage('status-produto')">&#128161; Status do Produto</div>
+                <div class="submenu-item" onclick="showPage('deposito')">&#127984; Deposito</div>
+                <div class="submenu-item" onclick="showPage('marcas')">&#127942; Marcas</div>
+            </div>
+        </div>
+        
+        <!-- VENDAS -->
+        <div class="menu-group">
+            <div class="menu-title" onclick="toggleMenu(this.parentElement)">
+                <span class="icon">&#128722;</span> VENDAS <span class="arrow">&#9660;</span>
+            </div>
+            <div class="submenu">
+                <div class="submenu-item" onclick="showPage('orcamentos')">&#128203; Orçamentos</div>
+                <div class="submenu-item" onclick="showPage('pedido-venda')">&#128220; Pedido de Venda</div>
+                <div class="submenu-item" onclick="showPage('consignado')">&#128230; Consignado</div>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- MAIN CONTENT -->
+    <main class="main">
+        <div class="header"><h1 id="page-title">&#127968; Dashboard</h1></div>
+        <div class="container">
+            
+            <!-- DASHBOARD PAGE -->
+            <div id="page-dashboard" class="page-section active">
+                <div class="dashboard-grid">
+                    <div class="stat-card">
+                        <h3 id="stat-total-clientes">0</h3>
+                        <p>&#128101; Clientes</p>
+                    </div>
+                    <div class="stat-card green">
+                        <h3 id="stat-recentes">0</h3>
+                        <p>&#128197; Ultimos 7 dias</p>
+                    </div>
+                    <div class="stat-card orange">
+                        <h3>0</h3>
+                        <p>&#128176; Financeiro</p>
+                    </div>
+                    <div class="stat-card red">
+                        <h3>0</h3>
+                        <p>&#128230; Estoque</p>
+                    </div>
+                </div>
+                <div class="card">
+                    <h2>&#128161; Acessos Rapidos</h2>
+                    <div class="quick-links">
+                        <div class="quick-link" onclick="showPage('clientes')">
+                            <span class="icon">&#128100;</span>
+                            <span>Cadastrar Cliente</span>
+                        </div>
+                        <div class="quick-link" onclick="showPage('novo-produto')">
+                            <span class="icon">&#10010;</span>
+                            <span>Novo Produto</span>
+                        </div>
+                        <div class="quick-link" onclick="showPage('orcamentos')">
+                            <span class="icon">&#128203;</span>
+                            <span>Fazer Orcamento</span>
+                        </div>
+                        <div class="quick-link" onclick="showPage('contas-pagar')">
+                            <span class="icon">&#128179;</span>
+                            <span>Contas a Pagar</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- CLIENTES PAGE -->
+            <div id="page-clientes" class="page-section">
+                <div class="card">
+                    <h2 id="form-title-clientes">&#128100; Novo Cliente</h2>
+                    <div id="msg-clientes" class="hidden" style="margin-bottom:1rem"></div>
+                    <form id="form-cliente">
+                        <input type="hidden" id="c-id">
+                        <div class="form-group">
+                            <label for="c-nome">Nome Completo *</label>
+                            <input type="text" id="c-nome" required placeholder="Digite o nome completo">
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="c-cpf">CPF</label>
+                                <input type="text" id="c-cpf" placeholder="000.000.000-00">
+                            </div>
+                            <div class="form-group">
+                                <label for="c-rg">RG</label>
+                                <input type="text" id="c-rg" placeholder="00000000-0">
+                            </div>
+                            <div class="form-group">
+                                <label for="c-data_nascimento">Data Nascimento</label>
+                                <input type="date" id="c-data_nascimento">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="c-email">Email *</label>
+                                <input type="email" id="c-email" required placeholder="email@exemplo.com">
+                            </div>
+                            <div class="form-group">
+                                <label for="c-telefone">Telefone</label>
+                                <input type="text" id="c-telefone" placeholder="(DD) 99999-9999">
+                            </div>
+                            <div class="form-group">
+                                <label for="c-celular">Celular</label>
+                                <input type="text" id="c-celular" placeholder="(DD) 99999-9999">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="c-endereco">Endereco</label>
+                            <input type="text" id="c-endereco" placeholder="Rua, numero, bairro">
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="c-cidade">Cidade</label>
+                                <input type="text" id="c-cidade" placeholder="Cidade">
+                            </div>
+                            <div class="form-group">
+                                <label for="c-estado">Estado</label>
+                                <input type="text" id="c-estado" placeholder="UF">
+                            </div>
+                            <div class="form-group">
+                                <label for="c-cep">CEP</label>
+                                <input type="text" id="c-cep" placeholder="00000-000">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="c-observacoes">Observacoes</label>
+                            <input type="text" id="c-observacoes" placeholder="Observacoes adicionais">
+                        </div>
+                        <div class="actions">
+                            <button type="submit" class="btn btn-primary" id="btn-submit-clientes">Salvar</button>
+                            <button type="button" class="btn btn-warning hidden" id="btn-cancelar-clientes">Cancelar</button>
+                        </div>
+                    </form>
+                </div>
+                <div class="card">
+                    <h2>&#128203; Clientes Cadastrados</h2>
+                    <div class="search-row">
+                        <input type="text" id="busca-clientes" placeholder="Buscar por nome ou email..." oninput="loadClientes()">
+                        <button type="button" class="btn btn-secondary" onclick="limparBuscaClientes()">Limpar</button>
+                    </div>
+                    <div class="total-reg" id="total-reg-clientes">0 registros encontrados</div>
+                    <table>
+                        <thead><tr>
+                            <th>#</th><th>Nome</th><th>CPF</th><th>Email</th><th>Celular</th><th>Cidade</th><th>Acoes</th>
+                        </tr></thead>
+                        <tbody id="tbody-clientes"></tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- FORNECEDORES PAGE -->
+            <div id="page-fornecedores" class="page-section">
+                <div class="card">
+                    <h2>&#128230; Novo Fornecedor</h2>
+                    <div class="msg-ok" style="margin-bottom:1rem">&#128233; Em breve - Modulo de Fornecedores</div>
+                    <form>
+                        <div class="form-group">
+                            <label>Razao Social</label>
+                            <input type="text" placeholder="Nome da empresa">
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>CNPJ</label>
+                                <input type="text" placeholder="00.000.000/0001-00">
+                            </div>
+                            <div class="form-group">
+                                <label>Telefone</label>
+                                <input type="text" placeholder="(DD) 99999-9999">
+                            </div>
+                            <div class="form-group">
+                                <label>Email</label>
+                                <input type="email" placeholder="fornecedor@email.com">
+                            </div>
+                        </div>
+                        <div class="actions">
+                            <button type="button" class="btn btn-primary">Salvar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- CONTAS A PAGAR PAGE -->
+            <div id="page-contas-pagar" class="page-section">
+                <div class="card">
+                    <h2>&#128179; Contas a Pagar</h2>
+                    <div class="msg-ok" style="margin-bottom:1rem">&#128176; Modulo Financeiro - Contas a Pagar</div>
+                    <form>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Descricao</label>
+                                <input type="text" placeholder="Descricao da despesa">
+                            </div>
+                            <div class="form-group">
+                                <label>Valor</label>
+                                <input type="number" step="0.01" placeholder="0,00">
+                            </div>
+                            <div class="form-group">
+                                <label>Data Vencimento</label>
+                                <input type="date">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Fornecedor</label>
+                                <select><option>Selecione...</option></select>
+                            </div>
+                            <div class="form-group">
+                                <label>Categoria</label>
+                                <select><option>Selecione...</option><option>Aluguel</option><option>Luz</option><option>Internet</option><option>Outros</option></select>
+                            </div>
+                        </div>
+                        <div class="actions">
+                            <button type="button" class="btn btn-primary">Registrar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- CONTAS A RECEBER PAGE -->
+            <div id="page-contas-receber" class="page-section">
+                <div class="card">
+                    <h2>&#128178; Contas a Receber</h2>
+                    <div class="msg-ok" style="margin-bottom:1rem">&#128176; Modulo Financeiro - Contas a Receber</div>
+                    <form>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Cliente</label>
+                                <select><option>Selecione...</option></select>
+                            </div>
+                            <div class="form-group">
+                                <label>Valor</label>
+                                <input type="number" step="0.01" placeholder="0,00">
+                            </div>
+                            <div class="form-group">
+                                <label>Data Vencimento</label>
+                                <input type="date">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Descricao</label>
+                            <input type="text" placeholder="Descricao doRecebimento">
+                        </div>
+                        <div class="actions">
+                            <button type="button" class="btn btn-primary">Registrar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- BOLETOS PAGE -->
+            <div id="page-boletos" class="page-section">
+                <div class="card">
+                    <h2>&#128196; Boletos</h2>
+                    <div class="msg-ok" style="margin-bottom:1rem">&#128196; Gestao de Boletos</div>
+                    <div class="search-row">
+                        <input type="text" placeholder="Buscar boleto...">
+                        <button type="button" class="btn btn-primary">Gerar Boleto</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- NOVO PRODUTO PAGE -->
+            <div id="page-novo-produto" class="page-section">
+                <div class="card">
+                    <h2>&#10010; Novo Produto</h2>
+                    <div class="msg-ok" style="margin-bottom:1rem">&#128230; Modulo de Estoque - Cadastro de Produtos</div>
+                    <form>
+                        <div class="form-group">
+                            <label>Nome do Produto</label>
+                            <input type="text" placeholder="Nome do produto">
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>SKU</label>
+                                <input type="text" placeholder="Codigo interno">
+                            </div>
+                            <div class="form-group">
+                                <label>Categoria</label>
+                                <select><option>Selecione...</option></select>
+                            </div>
+                            <div class="form-group">
+                                <label>Marca</label>
+                                <select><option>Selecione...</option></select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Preco Custo</label>
+                                <input type="number" step="0.01" placeholder="0,00">
+                            </div>
+                            <div class="form-group">
+                                <label>Preco Venda</label>
+                                <input type="number" step="0.01" placeholder="0,00">
+                            </div>
+                            <div class="form-group">
+                                <label>Quantidade</label>
+                                <input type="number" placeholder="0">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Descricao</label>
+                            <input type="text" placeholder="Descricao do produto">
+                        </div>
+                        <div class="actions">
+                            <button type="button" class="btn btn-primary">Cadastrar Produto</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- MOVIMENTACAO PAGE -->
+            <div id="page-movimentacao" class="page-section">
+                <div class="card">
+                    <h2>&#128260; Movimentacao de Estoque</h2>
+                    <div class="msg-ok" style="margin-bottom:1rem">&#128260; Controle de Entradas e Saidas</div>
+                    <form>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Tipo Movimentacao</label>
+                                <select><option>Selecione...</option><option>Entrada</option><option>Saida</option></select>
+                            </div>
+                            <div class="form-group">
+                                <label>Produto</label>
+                                <select><option>Selecione...</option></select>
+                            </div>
+                            <div class="form-group">
+                                <label>Quantidade</label>
+                                <input type="number" placeholder="0">
+                            </div>
+                        </div>
+                        <div class="actions">
+                            <button type="button" class="btn btn-primary">Registrar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- STATUS PRODUTO PAGE -->
+            <div id="page-status-produto" class="page-section">
+                <div class="card">
+                    <h2>&#128161; Status do Produto</h2>
+                    <div class="msg-ok" style="margin-bottom:1rem">&#128161; Produtos com estoque baixo</div>
+                    <table>
+                        <thead><tr><th>Produto</th><th>Estoque</th><th>Status</th><th>Acao</th></tr></thead>
+                        <tbody>
+                            <tr><td colspan="4" class="empty-state">Nenhum produto com estoque baixo</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- DEPOSITO PAGE -->
+            <div id="page-deposito" class="page-section">
+                <div class="card">
+                    <h2>&#127984; Deposito / Armazem</h2>
+                    <div class="msg-ok" style="margin-bottom:1rem">&#127984; Gestao de Locais de Armazenagem</div>
+                    <form>
+                        <div class="form-group">
+                            <label>Nome do Deposito</label>
+                            <input type="text" placeholder="Nome do local">
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Capacidade</label>
+                                <input type="number" placeholder="Capacidade total">
+                            </div>
+                            <div class="form-group">
+                                <label>Localizacao</label>
+                                <input type="text" placeholder="Endereco">
+                            </div>
+                        </div>
+                        <div class="actions">
+                            <button type="button" class="btn btn-primary">Cadastrar Deposito</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- MARCAS PAGE -->
+            <div id="page-marcas" class="page-section">
+                <div class="card">
+                    <h2>&#127942; Marcas</h2>
+                    <div class="msg-ok" style="margin-bottom:1rem">&#127942; Cadastro de Marcas</div>
+                    <form>
+                        <div class="form-group">
+                            <label>Nome da Marca</label>
+                            <input type="text" placeholder="Nome da marca">
+                        </div>
+                        <div class="actions">
+                            <button type="button" class="btn btn-primary">Cadastrar Marca</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- ORCAMENTOS PAGE -->
+            <div id="page-orcamentos" class="page-section">
+                <div class="card">
+                    <h2>&#128203; Orçamentos</h2>
+                    <div class="msg-ok" style="margin-bottom:1rem">&#128203; Criacao de Orçamentos</div>
+                    <form>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Cliente</label>
+                                <select><option>Selecione...</option></select>
+                            </div>
+                            <div class="form-group">
+                                <label>Data Validade</label>
+                                <input type="date">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Itens do Orcamento</label>
+                            <textarea rows="3" placeholder="Lista de produtos e servicos"></textarea>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Desconto (%)</label>
+                                <input type="number" placeholder="0">
+                            </div>
+                            <div class="form-group">
+                                <label>Total</label>
+                                <input type="number" step="0.01" placeholder="0,00" readonly>
+                            </div>
+                        </div>
+                        <div class="actions">
+                            <button type="button" class="btn btn-primary">Gerar Orcamento</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- PEDIDO VENDA PAGE -->
+            <div id="page-pedido-venda" class="page-section">
+                <div class="card">
+                    <h2>&#128220; Pedido de Venda</h2>
+                    <div class="msg-ok" style="margin-bottom:1rem">&#128220; Registro de Vendas</div>
+                    <form>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Cliente</label>
+                                <select><option>Selecione...</option></select>
+                            </div>
+                            <div class="form-group">
+                                <label>Data da Venda</label>
+                                <input type="date">
+                            </div>
+                            <div class="form-group">
+                                <label>Forma Pagamento</label>
+                                <select><option>Selecione...</option><option>Dinheiro</option><option>Cartão</option><option>Boleto</option></select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Produtos</label>
+                            <textarea rows="3" placeholder="Lista de produtos"></textarea>
+                        </div>
+                        <div class="actions">
+                            <button type="button" class="btn btn-primary">Finalizar Venda</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- CONSIGNADO PAGE -->
+            <div id="page-consignado" class="page-section">
+                <div class="card">
+                    <h2>&#128230; Consignado</h2>
+                    <div class="msg-ok" style="margin-bottom:1rem">&#128230; Vendas Consignadas</div>
+                    <form>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Cliente</label>
+                                <select><option>Selecione...</option></select>
+                            </div>
+                            <div class="form-group">
+                                <label>Produto</label>
+                                <select><option>Selecione...</option></select>
+                            </div>
+                            <div class="form-group">
+                                <label>Quantidade</label>
+                                <input type="number" placeholder="0">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Data Entrega</label>
+                            <input type="date">
+                        </div>
+                        <div class="actions">
+                            <button type="button" class="btn btn-primary">Registrar Consignado</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+        </div>
+    </main>
+    
+    <script>
+        const $ = (s) => document.querySelector(s);
+        
+        function toggleMenu(el) {
+            el.classList.toggle('open');
+        }
+        
+        function showPage(page) {
+            document.querySelectorAll('.page-section').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.submenu-item').forEach(i => i.classList.remove('active'));
+            
+            const pageEl = document.getElementById('page-' + page);
+            if (pageEl) {
+                pageEl.classList.add('active');
+                const titles = {
+                    'dashboard': '&#127968; Dashboard',
+                    'clientes': '&#128100; Clientes',
+                    'fornecedores': '&#128230; Fornecedores',
+                    'contas-pagar': '&#128179; Contas a Pagar',
+                    'contas-receber': '&#128178; Contas a Receber',
+                    'boletos': '&#128196; Boletos',
+                    'novo-produto': '&#10010; Novo Produto',
+                    'movimentacao': '&#128260; Movimentacao',
+                    'status-produto': '&#128161; Status do Produto',
+                    'deposito': '&#127984; Deposito',
+                    'marcas': '&#127942; Marcas',
+                    'orcamentos': '&#128203; Orçamentos',
+                    'pedido-venda': '&#128220; Pedido de Venda',
+                    'consignado': '&#128230; Consignado'
+                };
+                $('#page-title').innerHTML = titles[page] || page;
+            }
+            
+            event.target.classList.add('active');
+            
+            if (page === 'clientes') loadClientes();
+            if (page === 'dashboard') loadDashboard();
+        }
+        
+        let orderField = "id";
+        let orderDir = "desc";
+        let allClientes = [];
+        
+        async function loadClientes() {
+            const termo = $("#busca-clientes")?.value || "";
+            const url = termo ? `/api/clientes?busca=${encodeURIComponent(termo)}` : "/api/clientes";
+            const r = await fetch(url);
+            allClientes = await r.json();
+            renderClientes();
+        }
+        
+        function renderClientes() {
+            const tbody = $("#tbody-clientes");
+            if (!tbody) return;
+            
+            allClientes.sort((a, b) => {
+                let va = (a[orderField] || "").toString().toLowerCase();
+                let vb = (b[orderField] || "").toString().toLowerCase();
+                if (va < vb) return orderDir === "asc" ? -1 : 1;
+                if (va > vb) return orderDir === "asc" ? 1 : -1;
+                return 0;
+            });
+            
+            tbody.innerHTML = "";
+            if (allClientes.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="empty-state">Nenhum cliente cadastrado</td></tr>`;
+            } else {
+                allClientes.forEach(c => {
+                    tbody.innerHTML += `<tr>
+                        <td>${c.id}</td><td>${(c.nome || "").toUpperCase()}</td><td>${c.cpf || "—"}</td>
+                        <td>${c.email}</td><td>${c.celular || "—"}</td><td>${c.cidade || "—"}</td>
+                        <td class="table-actions">
+                            <button class="btn btn-warning btn-sm" onclick="editarCliente(${c.id})">Editar</button>
+                            <button class="btn btn-danger btn-sm" onclick="excluirCliente(${c.id})">Excluir</button>
+                        </td></tr>`;
+                });
+            }
+            $("#total-reg-clientes").textContent = `${allClientes.length} registro(s)`;
+        }
+        
+        async function loadDashboard() {
+            const r = await fetch("/api/dashboard");
+            const d = await r.json();
+            $("#stat-total-clientes").textContent = d.total;
+            $("#stat-recentes").textContent = d.ultimos_7_dias;
+        }
+        
+        function limparBuscaClientes() {
+            $("#busca-clientes").value = "";
+            loadClientes();
+        }
+        
+        function mascaraCPF(v) {
+            return v.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/g, "$1.$2.$3-$4").replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4");
+        }
+        function mascaraCEP(v) {
+            return v.replace(/(\d{5})(\d{3})/g, "$1-$2").replace(/^(\d{5})(\d{3})$/, "$1-$2");
+        }
+        function mascaraTel(v) {
+            v = v.replace(/\D/g, "");
+            if (v.length > 10) v = v.substring(0, 11);
+            if (v.length > 6) return `(${v.slice(0,2)}) ${v.slice(2,7)}-${v.slice(7)}`;
+            if (v.length > 2) return `(${v.slice(0,2)}) ${v.slice(2)}`;
+            return v ? `(${v}` : "";
+        }
+        
+        if ($("#c-cpf")) {
+            $("#c-cpf").addEventListener("input", e => e.target.value = mascaraCPF(e.target.value));
+            $("#c-cep").addEventListener("input", e => e.target.value = mascaraCEP(e.target.value));
+            $("#c-telefone").addEventListener("input", e => e.target.value = mascaraTel(e.target.value));
+            $("#c-celular").addEventListener("input", e => e.target.value = mascaraTel(e.target.value));
+        }
+        
+        if ($("#form-cliente")) {
+            $("#form-cliente").addEventListener("submit", async function(e) {
+                e.preventDefault();
+                const id = $("#c-id").value;
+                const body = {
+                    nome: $("#c-nome").value,
+                    cpf: $("#c-cpf").value,
+                    rg: $("#c-rg").value,
+                    data_nascimento: $("#c-data_nascimento").value,
+                    email: $("#c-email").value,
+                    telefone: $("#c-telefone").value,
+                    celular: $("#c-celular").value,
+                    endereco: $("#c-endereco").value,
+                    cidade: $("#c-cidade").value,
+                    estado: $("#c-estado").value,
+                    cep: $("#c-cep").value,
+                    observacoes: $("#c-observacoes").value,
+                };
+                const url = id ? `/api/clientes/${id}` : "/api/clientes";
+                const method = id ? "PUT" : "POST";
+                const r = await fetch(url, { method, headers: {"Content-Type":"application/json"}, body: JSON.stringify(body)});
+                const msg = $("#msg-clientes");
+                if(r.ok){
+                    msg.className = "msg-ok"; msg.textContent = id ? "Atualizado com sucesso!" : "Cadastrado com sucesso!";
+                    msg.classList.remove("hidden");
+                    $("#form-cliente").reset(); $("#c-id").value="";
+                    $("#form-title-clientes").textContent = "Novo Cliente";
+                    $("#btn-submit-clientes").textContent = "Salvar";
+                    $("#btn-cancelar-clientes").classList.add("hidden");
+                } else {
+                    const json = await r.json();
+                    msg.className = "msg-err"; msg.textContent = "Erro: " + json.erro;
+                    msg.classList.remove("hidden");
+                }
+                setTimeout(()=> msg.classList.add("hidden"), 3000);
+                loadClientes();
+                loadDashboard();
+            });
+        }
+        
+        async function editarCliente(id) {
+            const r = await fetch(`/api/clientes/${id}`);
+            const c = await r.json();
+            $("#c-id").value = c.id;
+            $("#c-nome").value = c.nome;
+            $("#c-cpf").value = c.cpf || "";
+            $("#c-rg").value = c.rg || "";
+            $("#c-data_nascimento").value = c.data_nascimento || "";
+            $("#c-email").value = c.email;
+            $("#c-telefone").value = c.telefone || "";
+            $("#c-celular").value = c.celular || "";
+            $("#c-endereco").value = c.endereco || "";
+            $("#c-cidade").value = c.cidade || "";
+            $("#c-estado").value = c.estado || "";
+            $("#c-cep").value = c.cep || "";
+            $("#c-observacoes").value = c.observacoes || "";
+            $("#form-title-clientes").textContent = "Editar Cliente";
+            $("#btn-submit-clientes").textContent = "Atualizar";
+            $("#btn-cancelar-clientes").classList.remove("hidden");
+            window.scrollTo({top:0, behavior:"smooth"});
+        }
+        
+        async function excluirCliente(id) {
+            if(!confirm("Deseja excluir este cliente?")) return;
+            await fetch(`/api/clientes/${id}`, {method:"DELETE"});
+            loadClientes();
+            loadDashboard();
+        }
+        
+        if ($("#btn-cancelar-clientes")) {
+            $("#btn-cancelar-clientes").addEventListener("click", function() {
+                $("#form-cliente").reset(); $("#c-id").value = "";
+                $("#form-title-clientes").textContent = "Novo Cliente";
+                $("#btn-submit-clientes").textContent = "Salvar";
+                $("#btn-cancelar-clientes").classList.add("hidden");
+            });
+        }
+        
+        window.onload = () => { loadDashboard(); };
+    </script>
+</body>
+</html>

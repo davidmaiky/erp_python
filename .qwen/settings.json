@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(timeout *)",
+      "Bash(c:\\users\\david\\appdata\\local\\programs\\python\\python311\\python.exe *)"
+    ]
+  },
+  "$version": 4
+}

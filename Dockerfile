@@ -11,7 +11,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-RUN mkdir -p /data && chown -R nobody:nobody /data
+RUN mkdir -p /data
 
 ENV PYTHONUNBUFFERED=1
 

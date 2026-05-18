@@ -3,7 +3,10 @@ import os
 from flask import Flask, render_template, request, jsonify
 
 app = Flask(__name__)
-DB_PATH = os.path.join(os.path.dirname(__file__), "cadastro.db")
+
+data_dir = os.environ.get("DATA_DIR", "/data")
+os.makedirs(data_dir, exist_ok=True)
+DB_PATH = os.path.join(data_dir, "cadastro.db")
 
 
 def get_db():

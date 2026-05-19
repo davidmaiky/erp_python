@@ -15,6 +15,15 @@ def get_db():
     return conn
 
 
+def to_upper_except_email(data):
+    for key, value in data.items():
+        if key == "email":
+            continue
+        if isinstance(value, str):
+            data[key] = value.upper()
+    return data
+
+
 def init_db():
     conn = get_db()
     conn.execute("DROP TABLE IF EXISTS clientes")
@@ -62,7 +71,7 @@ def listar():
 
 @app.route("/api/clientes", methods=["POST"])
 def criar():
-    data = request.json
+    data = to_upper_except_email(request.json)
     if not data.get("nome") or not data.get("email"):
         return jsonify({"erro": "nome e email sao obrigatorios"}), 400
     try:
@@ -91,7 +100,7 @@ def detalhes(id):
 
 @app.route("/api/clientes/<int:id>", methods=["PUT"])
 def atualizar(id):
-    data = request.json
+    data = to_upper_except_email(request.json)
     if not data.get("nome") or not data.get("email"):
         return jsonify({"erro": "nome e email sao obrigatorios"}), 400
     try:

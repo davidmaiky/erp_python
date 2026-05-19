@@ -45,6 +45,34 @@ def init_db():
             criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
+    conn.execute("DROP TABLE IF EXISTS fornecedores")
+    conn.execute("""
+        CREATE TABLE fornecedores (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            razao_social TEXT NOT NULL,
+            nome_fantasia TEXT,
+            cnpj TEXT UNIQUE,
+            ie TEXT,
+            email TEXT,
+            telefone TEXT,
+            celular TEXT,
+            contato TEXT,
+            endereco TEXT,
+            numero TEXT,
+            complemento TEXT,
+            bairro TEXT,
+            cidade TEXT,
+            estado TEXT,
+            cep TEXT,
+            banco TEXT,
+            agencia TEXT,
+            conta TEXT,
+            tipo_conta TEXT,
+            observacoes TEXT,
+            ativo INTEGER DEFAULT 1,
+            criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
     conn.commit()
     conn.close()
 
@@ -133,8 +161,94 @@ def dashboard():
     db = get_db()
     total = db.execute("SELECT COUNT(*) as c FROM clientes").fetchone()["c"]
     ultimos = db.execute("SELECT COUNT(*) as c FROM clientes WHERE criado_em >= datetime('now', '-7 days')").fetchone()["c"]
+    total_fornecedores = db.execute("SELECT COUNT(*) as c FROM fornecedores WHERE ativo = 1").fetchone()["c"]
     db.close()
-    return jsonify({"total": total, "ultimos_7_dias": ultimos})
+    return jsonify({"total": total, "ultimos_7_dias": ultimos, "total_fornecedores": total_fornecedores})
+
+
+@app.route("/api/fornecedores", methods=["GET"])
+def listar_fornecedores():
+    db = get_db()
+    termo = request.args.get("busca", "").strip()
+    if termo:
+        fornecedores = db.execute(
+            "SELECT * FROM fornecedores WHERE (razao_social LIKE ? OR nome_fantasia LIKE ? OR cnpj LIKE ?) AND ativo = 1 ORDER BY id DESC",
+            (f"%{termo}%", f"%{termo}%", f"%{termo}%")
+        ).fetchall()
+    else:
+        fornecedores = db.execute("SELECT * FROM fornecedores WHERE ativo = 1 ORDER BY id DESC").fetchall()
+    db.close()
+    return jsonify([dict(f) for f in fornecedores])
+
+
+@app.route("/api/fornecedores", methods=["POST"])
+def criar_fornecedor():
+    data = to_upper_except_email(request.json)
+    if not data.get("razao_social"):
+        return jsonify({"erro": "razao social e obrigatoria"}), 400
+    try:
+        db = get_db()
+        cur = db.execute(
+            """INSERT INTO fornecedores (razao_social, nome_fantasia, cnpj, ie, email, telefone, celular, contato, endereco, numero, complemento, bairro, cidade, estado, cep, banco, agencia, conta, tipo_conta, observacoes)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (data.get("razao_social"), data.get("nome_fantasia"), data.get("cnpj"), data.get("ie"),
+             data.get("email"), data.get("telefone"), data.get("celular"), data.get("contato"),
+             data.get("endereco"), data.get("numero"), data.get("complemento"), data.get("bairro"),
+             data.get("cidade"), data.get("estado"), data.get("cep"), data.get("banco"),
+             data.get("agencia"), data.get("conta"), data.get("tipo_conta"), data.get("observacoes")),
+        )
+        db.commit()
+        fornecedor = db.execute("SELECT * FROM fornecedores WHERE id = ?", (cur.lastrowid,)).fetchone()
+        db.close()
+        return jsonify(dict(fornecedor)), 201
+    except sqlite3.IntegrityError as e:
+        if "cnpj" in str(e):
+            return jsonify({"erro": "cnpj ja cadastrado"}), 409
+        return jsonify({"erro": "erro ao salvar fornecedor"}), 409
+
+
+@app.route("/api/fornecedores/<int:id>", methods=["GET"])
+def detalhes_fornecedor(id):
+    db = get_db()
+    fornecedor = db.execute("SELECT * FROM fornecedores WHERE id = ?", (id,)).fetchone()
+    db.close()
+    if fornecedor:
+        return jsonify(dict(fornecedor))
+    return jsonify({"erro": "fornecedor nao encontrado"}), 404
+
+
+@app.route("/api/fornecedores/<int:id>", methods=["PUT"])
+def atualizar_fornecedor(id):
+    data = to_upper_except_email(request.json)
+    if not data.get("razao_social"):
+        return jsonify({"erro": "razao social e obrigatoria"}), 400
+    try:
+        db = get_db()
+        db.execute(
+            """UPDATE fornecedores SET razao_social=?, nome_fantasia=?, cnpj=?, ie=?, email=?, telefone=?, celular=?, contato=?, endereco=?, numero=?, complemento=?, bairro=?, cidade=?, estado=?, cep=?, banco=?, agencia=?, conta=?, tipo_conta=?, observacoes=? WHERE id=?""",
+            (data.get("razao_social"), data.get("nome_fantasia"), data.get("cnpj"), data.get("ie"),
+             data.get("email"), data.get("telefone"), data.get("celular"), data.get("contato"),
+             data.get("endereco"), data.get("numero"), data.get("complemento"), data.get("bairro"),
+             data.get("cidade"), data.get("estado"), data.get("cep"), data.get("banco"),
+             data.get("agencia"), data.get("conta"), data.get("tipo_conta"), data.get("observacoes"), id),
+        )
+        db.commit()
+        fornecedor = db.execute("SELECT * FROM fornecedores WHERE id = ?", (id,)).fetchone()
+        db.close()
+        return jsonify(dict(fornecedor))
+    except sqlite3.IntegrityError as e:
+        if "cnpj" in str(e):
+            return jsonify({"erro": "cnpj ja cadastrado"}), 409
+        return jsonify({"erro": "erro ao atualizar fornecedor"}), 409
+
+
+@app.route("/api/fornecedores/<int:id>", methods=["DELETE"])
+def deletar_fornecedor(id):
+    db = get_db()
+    db.execute("UPDATE fornecedores SET ativo = 0 WHERE id = ?", (id,))
+    db.commit()
+    db.close()
+    return "", 204
 
 
 if __name__ == "__main__":
